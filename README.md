@@ -221,22 +221,12 @@ sistema-riego-automatico/
 │       └── DHT/
 ├── python/
 │   ├── main_app.py
-│   ├── requirements.txt
-│   └── exports/
-├── docs/
-│   ├── esquematico.png
-│   ├── conexiones.jpg
-│   └── manual_usuario.pdf
-└── examples/
-    ├── datos_ejemplo.csv
-    └── graficos_ejemplo.png
 ```
 
 
 ## 📞 Soporte
-Documentación: Ver documentación completa
-Email: rarellanou@unemi.edu.ec
-  
+-Documentación: https://drive.google.com/drive/folders/1n4VyhmAKXzNoXf1zJKcowexxXSsHSj7Q?usp=drive_link
+-Email: rarellanou@unemi.edu.ec
 
 
 
