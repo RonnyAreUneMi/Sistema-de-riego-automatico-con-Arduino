@@ -6,7 +6,7 @@
 #define RELE_PIN 8
 #define UMBRAL_RIEGO 30
 #define UMBRAL_SATISFECHO 45
-#define TIEMPO_RIEGO_MAX 10000
+#define TIEMPO_RIEGO_MAX 1000
 
 #define SENSOR_SECO 1023
 #define SENSOR_MOJADO 300
@@ -46,12 +46,12 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("Bomba: OFF      ");
   lcd.setCursor(0, 1);
-  lcd.print("Riego no necesar");
+  lcd.print("Sistema listo   ");
   delay(2000);
   lcd.clear();
   
   Serial.println("=== Sistema de riego iniciado ===");
-  Serial.println("Estado inicial: Bomba OFF - Riego no necesario");
+  Serial.println("Estado inicial: Bomba OFF - Sistema listo");
   ultimoRiego = 0;
 }
 
@@ -66,56 +66,16 @@ void loop() {
   verificarDeseoAgua(humedad);
   controlarRiego(humedad);
   
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Tu planta dice:");
-  lcd.setCursor(0, 1);
-  if (humedad > 80) {
-    lcd.print("Me ahogo :O");
-  } else if (humedad > 60) {
-    lcd.print("Muy mojada :|");
-  } else if (humedad > 40) {
-    lcd.print("Estoy feliz :)");
-  } else if (humedad > 30) {
-    lcd.print("Tengo sed :/");
-  } else if (humedad > 15) {
-    lcd.print("Agua urgente :(");
-  } else {
-    lcd.print("Me muero D:");
-  }
+  // Mostrar estado principal
+  mostrarEstadoPrincipal(humedad);
   delay(3000);
   
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Temp: ");
-  if (isnan(temperatura)) {
-    lcd.print("Error");
-  } else {
-    lcd.print(temperatura, 1);
-    lcd.print("C");
-  }
-  
-  lcd.setCursor(0, 1);
-  lcd.print("Humedad: ");
-  lcd.print(humedad);
-  lcd.print("%");
+  // Mostrar datos de sensores
+  mostrarDatosSensores(temperatura, humedad);
   delay(3000);
   
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  if (bombaActiva) {
-    lcd.print("Bomba ON");
-    lcd.setCursor(0, 1);
-    lcd.print("Regando...");
-  } else if (analizandoHumedad) {
-    lcd.print("Analizando");
-    lcd.setCursor(0, 1);
-    lcd.print("humedad espere");
-  } else {
-    lcd.print("Riego no");
-    lcd.setCursor(0, 1);
-    lcd.print("necesario");
-  }
+  // Mostrar estado del sistema
+  mostrarEstadoSistema();
   
   Serial.print("Raw sensor: ");
   Serial.print(sensorValue);
@@ -126,13 +86,115 @@ void loop() {
   Serial.print("C | Estado: ");
   if (bombaActiva) {
     Serial.print("RIEGO ACTIVO");
+  } else if (analizandoHumedad) {
+    Serial.print("ANALIZANDO");
   } else {
-    Serial.print(plantaQuiereAgua ? "RIEGO NO NECESARIO" : "ESPERANDO");
+    Serial.print("ESPERANDO");
   }
   Serial.print(" | Planta necesita agua: ");
   Serial.println(plantaQuiereAgua ? "SI" : "NO");
   
   delay(3000);
+}
+
+void mostrarEstadoPrincipal(int humedad) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  
+  if (analizandoHumedad) {
+    // Durante el análisis, mostrar mensaje especial
+    lcd.print("Agua absorbiendo");
+    lcd.setCursor(0, 1);
+    lcd.print("Espere analisis");
+  } else {
+    // Mensaje normal de la planta
+    lcd.print("Tu planta dice:");
+    lcd.setCursor(0, 1);
+    if (humedad > 80) {
+      lcd.print("Me ahogo :O     ");
+    } else if (humedad > 60) {
+      lcd.print("Muy mojada :|   ");
+    } else if (humedad > 40) {
+      lcd.print("Estoy feliz :)  ");
+    } else if (humedad > 30) {
+      lcd.print("Tengo sed :/    ");
+    } else if (humedad > 15) {
+      lcd.print("Agua urgente :( ");
+    } else {
+      lcd.print("Me muero D:     ");
+    }
+  }
+}
+
+void mostrarDatosSensores(float temperatura, int humedad) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  if (isnan(temperatura)) {
+    lcd.print("Error   ");
+  } else {
+    lcd.print(temperatura, 1);
+    lcd.print("C      ");
+  }
+  
+  lcd.setCursor(0, 1);
+  if (analizandoHumedad) {
+    // Durante análisis, mostrar que el sensor está estabilizando
+    lcd.print("Estabilizando...");
+  } else {
+    lcd.print("Humedad: ");
+    lcd.print(humedad);
+    lcd.print("%   ");
+  }
+}
+
+void mostrarEstadoSistema() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  
+  if (bombaActiva) {
+    lcd.print("Bomba: ON       ");
+    lcd.setCursor(0, 1);
+    // Mostrar tiempo transcurrido de riego
+    unsigned long tiempoRiego = (millis() - inicioRiego) / 1000;
+    lcd.print("Regando ");
+    lcd.print(tiempoRiego);
+    lcd.print("s    ");
+  } else if (analizandoHumedad) {
+    lcd.print("Bomba: OFF      ");
+    lcd.setCursor(0, 1);
+    // Calcular tiempo restante correctamente
+    unsigned long tiempoTranscurrido = millis() - inicioAnalisis;
+    if (tiempoTranscurrido < tiempoAnalisis) {
+      unsigned long tiempoRestante = (tiempoAnalisis - tiempoTranscurrido) / 1000;
+      lcd.print("Esperando ");
+      lcd.print(tiempoRestante + 1); // +1 para evitar mostrar 0 antes de tiempo
+      lcd.print("s  ");
+    } else {
+      lcd.print("Finalizando...  ");
+    }
+  } else {
+    lcd.print("Bomba: OFF      ");
+    lcd.setCursor(0, 1);
+    if (plantaQuiereAgua) {
+      // Verificar si está en tiempo de espera entre riegos
+      if (ultimoRiego > 0) {
+        unsigned long tiempoTranscurrido = millis() - ultimoRiego;
+        if (tiempoTranscurrido < tiempoMinEntreriegos) {
+          unsigned long tiempoEspera = (tiempoMinEntreriegos - tiempoTranscurrido) / 1000;
+          lcd.print("Espera ");
+          lcd.print(tiempoEspera + 1);
+          lcd.print("s    ");
+        } else {
+          lcd.print("Preparando riego");
+        }
+      } else {
+        lcd.print("Preparando riego");
+      }
+    } else {
+      lcd.print("Sin necesidad   ");
+    }
+  }
 }
 
 void verificarDeseoAgua(int humedad) {
@@ -149,14 +211,14 @@ void controlarRiego(int humedad) {
   if (analizandoHumedad) {
     if (tiempoActual - inicioAnalisis >= tiempoAnalisis) {
       analizandoHumedad = false;
-      Serial.println("Análisis completado");
+      Serial.println("Análisis completado - Agua absorbida por la planta");
       
       if (humedad <= UMBRAL_RIEGO) {
         plantaQuiereAgua = true;
         Serial.println("Resultado: Aún necesita más riego");
       } else {
         plantaQuiereAgua = false;
-        Serial.println("Resultado: Riego suficiente");
+        Serial.println("Resultado: Riego suficiente - Planta satisfecha");
       }
     }
     return;
@@ -174,9 +236,9 @@ void controlarRiego(int humedad) {
       inicioAnalisis = tiempoActual;
       
       if (humedad >= UMBRAL_SATISFECHO) {
-        Serial.println("Planta satisfecha - Bomba OFF - Iniciando análisis");
+        Serial.println("Planta satisfecha - Bomba OFF - Iniciando período de absorción");
       } else {
-        Serial.println("Tiempo máximo alcanzado - Bomba OFF - Iniciando análisis");
+        Serial.println("Tiempo máximo alcanzado - Bomba OFF - Iniciando análisis de absorción");
       }
     }
     return;
@@ -184,18 +246,18 @@ void controlarRiego(int humedad) {
   
   if (plantaQuiereAgua && humedad <= UMBRAL_RIEGO) {
     if (tiempoActual - ultimoRiego >= tiempoMinEntreriegos) {
-      Serial.println("Riego necesario - Activando bomba");
+      Serial.println("Riego necesario - Activando bomba de agua");
       
       delay(100);
       digitalWrite(RELE_PIN, LOW);
       bombaActiva = true;
       inicioRiego = tiempoActual;
       
-      Serial.print("Riego iniciado - Humedad: ");
+      Serial.print("Riego iniciado - Humedad actual: ");
       Serial.print(humedad);
-      Serial.println("% - Regando");
+      Serial.println("% - Comenzando riego...");
     } else {
-      Serial.println("Riego necesario pero esperando tiempo entre riegos");
+      Serial.println("Riego necesario pero respetando tiempo mínimo entre riegos");
     }
   }
 }
